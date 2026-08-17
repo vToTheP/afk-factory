@@ -1,0 +1,44 @@
+{
+  "name": "afk-factory",
+  "version": "0.0.0",
+  "description": "Stack-agnostic CLI that runs an issue-driven, agent-based development loop on GitHub Issues.",
+  "keywords": [
+    "agent",
+    "automation",
+    "github-issues",
+    "cli"
+  ],
+  "homepage": "https://github.com/vToTheP/afk-factory#readme",
+  "bugs": {
+    "url": "https://github.com/vToTheP/afk-factory/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vToTheP/afk-factory.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "afk-factory": "bin/afk-factory.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "seeds/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc -p jsconfig.json",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

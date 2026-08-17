@@ -1,0 +1,12 @@
+# Force LF, including in working copies on Windows.
+#
+# This is not a cosmetic setting. `npm pack` archives the working copy rather than the
+# committed content, so on a Windows checkout with autocrlf the published tarball would
+# contain bin/afk-factory.js with CRLF line endings. On Linux the shebang then reads
+# `#!/usr/bin/env node\r` and execution fails with "bad interpreter" — while everything
+# keeps working for whoever published it.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
