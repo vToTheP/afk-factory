@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - {{afk:defaultBranch}}
+      - "{{afk:defaultBranch}}"
   pull_request:
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '{{afk:nodeVersion}}'
+          node-version: "{{afk:nodeVersion}}"
 
       # Invoked bare on purpose: no `|| true`, no `continue-on-error`, no pipe that
       # replaces the exit status with the one of the last command in the chain. This
@@ -33,4 +33,4 @@ jobs:
       - name: Work one issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx --yes afk-factory@{{afk:engineVersion}} run
+        run: "npx --yes afk-factory@{{afk:engineVersion}} run"

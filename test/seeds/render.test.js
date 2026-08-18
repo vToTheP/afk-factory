@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
 import { SEEDS_DIR } from '../../src/pkg.js'
-import { TEMPLATES_DIRNAME } from '../../src/seeds/catalog.js'
+import { TEMPLATES_DIRNAME, loadCatalog } from '../../src/seeds/catalog.js'
 import { placeholders, render } from '../../src/seeds/render.js'
 
 test('render substitutes a declared placeholder', () => {
@@ -71,12 +71,15 @@ test('render escapes every character that could start a new line', () => {
   }
 })
 
-test('render rejects a single quote rather than guessing the quoting context', () => {
-  // JSON escaping is correct in a JSON string and structurally safe in a YAML double
-  // quoted one, but YAML escapes a single quote by doubling it. The renderer cannot
-  // see which context a placeholder sits in, so the one character whose escape differs
-  // between the two formats is refused instead of guessed wrong.
-  assert.throws(() => render("v: '{{afk:v}}'", { v: "a'b" }), /quote/)
+test('render passes a single quote through, since the context is double quoted', () => {
+  // A gate command with a quoted argument is an ordinary thing to configure. Neither a
+  // JSON string nor a YAML double-quoted scalar requires an escape for it, and the
+  // template contract guarantees the placeholder sits in one of those.
+  assert.equal(render('run: "{{afk:v}}"', { v: "echo 'hello'" }), `run: "echo 'hello'"`)
+  assert.equal(
+    JSON.parse(render('{"k": "{{afk:v}}"}', { v: "npm test -- --grep 'slow'" })).k,
+    "npm test -- --grep 'slow'",
+  )
 })
 
 test('render does not substitute inside a substituted value', () => {
@@ -123,7 +126,30 @@ test('the workflow seed renders without disturbing its Actions expression', () =
     engineVersion: '0.0.0',
   })
   assert.ok(rendered.includes('${{ secrets.GITHUB_TOKEN }}'))
-  assert.ok(rendered.includes('- main'))
+  assert.ok(rendered.includes('- "main"'))
   assert.ok(rendered.includes('npx --yes afk-factory@0.0.0 run'))
   assert.ok(!rendered.includes('{{afk:'))
+})
+
+test('every placeholder in every packaged template sits inside double quotes', () => {
+  // The template contract, enforced rather than documented. The renderer escapes values
+  // with one rule and no branches, which is only correct because the quoting style
+  // around a placeholder is known. Left as a convention, the first seed added by
+  // somebody who has not read the module comment would break it silently — and the
+  // symptom would be a mangled workflow in a stranger's repository, not a failing test.
+  // What has to hold is that the placeholder is *inside* a double-quoted scalar, not
+  // that it fills one: `run: "npx afk-factory@{{afk:engineVersion}} run"` is fine. With
+  // no YAML parser available, the check counts quotes on the line — an odd number
+  // before the placeholder means it opened a string that has not closed yet. That is
+  // sound for these templates because none of them uses a multi-line scalar.
+  for (const entry of loadCatalog()) {
+    for (const [number, line] of template(entry.source).split('\n').entries()) {
+      for (const match of line.matchAll(/\{\{afk:[A-Za-z][A-Za-z0-9]*\}\}/g)) {
+        const quotesBefore = (line.slice(0, match.index).match(/"/g) ?? []).length
+        const where = `${entry.source}:${number + 1}: ${match[0]}`
+        assert.equal(quotesBefore % 2, 1, `${where} is not inside a double-quoted scalar`)
+        assert.equal((line.match(/"/g) ?? []).length % 2, 0, `${where} sits on a line with an unbalanced quote`)
+      }
+    }
+  }
 })

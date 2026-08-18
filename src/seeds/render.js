@@ -18,14 +18,26 @@
  * runtime dependencies, and hand-rolling one to make quoting safe would be a far larger
  * surface than the escaping it replaces.
  *
- * So the rule is deliberately narrow. Every value is escaped with JSON string rules,
- * which is exactly right inside a JSON string and removes every control character, so
- * no value can start a new line in any format. The characters that a YAML parser also
- * treats as line breaks but that `JSON.stringify` passes through untouched are escaped
- * explicitly. And the single quote is refused outright: YAML escapes it by doubling,
- * JSON by a backslash, and this function cannot see which context a placeholder sits in
- * — so rather than guess wrong in one of the two, it declines the one character where
- * the two disagree.
+ * ## The template contract
+ *
+ * The escape for a character depends on the quoting style around it, and a pure
+ * `(template, values)` function cannot see that style. Rather than guess, the *context
+ * is fixed*: **every placeholder in a template sits inside a double-quoted scalar.**
+ * `test/seeds/render.test.js` enforces this against the packaged templates, so a new
+ * seed that breaks the contract fails the suite rather than shipping.
+ *
+ * With that guarantee the escaping is a single rule with no branches. A JSON string and
+ * a YAML double-quoted scalar escape the same two characters the same way — `"` and the
+ * backslash — and neither requires anything of a single quote. So every value goes
+ * through JSON string rules, which is correct in both and strips every control
+ * character, so no value can start a new line in any format. The characters a YAML
+ * parser also treats as line breaks but that `JSON.stringify` passes through untouched
+ * are escaped explicitly.
+ *
+ * The contract is what keeps ordinary input working. A gate command like
+ * `npm test -- --grep 'slow'` is a legitimate thing to configure, and a renderer that
+ * refused the single quote to stay context-blind would push its own limitation onto
+ * whoever is writing the config.
  *
  * This is not a defence against a hostile operator. Someone who can pass `--set` can
  * usually run commands anyway; gate commands are shell strings by design. It is a
@@ -48,8 +60,6 @@ const MALFORMED = /\{\{afk:/
 
 /** Line breaks to a YAML parser that `JSON.stringify` leaves as literal characters. */
 const UNESCAPED_BREAKS = /[\u0085\u2028\u2029]/g
-
-const SINGLE_QUOTE = "'"
 
 /**
  * Lists the keys a template needs.
@@ -81,15 +91,9 @@ function escapeValue(key, value) {
   if (typeof value !== 'string') {
     throw new Error(`template value "${key}" must be a string, got ${value === null ? 'null' : typeof value}`)
   }
-  if (value.includes(SINGLE_QUOTE)) {
-    throw new Error(
-      `template value "${key}" must not contain a single quote: ${value}\n` +
-        'The escape for it differs between JSON and YAML and the renderer cannot tell ' +
-        'the two apart here. Use a double quote instead.',
-    )
-  }
   // `.slice(1, -1)` drops the quotes JSON.stringify adds: the template supplies its own
-  // quoting, and the placeholder sits inside it.
+  // quoting, and the placeholder sits inside it. Which is also why the template contract
+  // exists — those surrounding quotes are assumed to be there.
   return JSON.stringify(value)
     .slice(1, -1)
     .replace(UNESCAPED_BREAKS, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
@@ -110,8 +114,8 @@ function escapeValue(key, value) {
  * @param {string} template Template source.
  * @param {Record<string, unknown>} values Values by placeholder key.
  * @returns {string} The rendered content.
- * @throws {Error} If a key is missing, a value is not a string, a value contains a
- *   single quote, or the template holds a malformed placeholder.
+ * @throws {Error} If a key is missing, a value is not a string, or the template holds a
+ *   malformed placeholder.
  */
 export function render(template, values) {
   // Checked before substituting, not after: a well-formed placeholder is gone by then,
