@@ -1,0 +1,33 @@
+name: afk-factory run
+
+# Manual trigger only, deliberately: no schedule until the engine does real work. A
+# nightly job that fails in a repository somebody has just set up teaches them to ignore
+# the notification, and the signal never comes back.
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    # Scoped to the job rather than the workflow, so a step added later starts from the
+    # default read-only token instead of inheriting write access it was never meant to
+    # have. Without these two the run reaches the push and fails with a 403.
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '{{afk:nodeVersion}}'
+
+      # Invoked bare on purpose: no `|| true`, no `continue-on-error`, no pipe that
+      # replaces the exit status with the one of the last command in the chain. This
+      # workflow is the thing that reports whether the factory worked.
+      - name: Work one issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx --yes afk-factory@{{afk:engineVersion}} run

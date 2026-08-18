@@ -1,4 +1,0 @@
-# Intentionally empty until the seed catalog lands.
-#
-# The directory has to exist so that the `files` allowlist in package.json ships it and
-# package-root-relative resolution has something to point at.

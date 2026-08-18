@@ -1,0 +1,16 @@
+{
+  "seeds": [
+    {
+      "source": "afk-factory.json.tmpl",
+      "target": ".afk-factory.json",
+      "class": "seed-once",
+      "marker": "none"
+    },
+    {
+      "source": "workflows/afk-run.yml.tmpl",
+      "target": ".github/workflows/afk-run.yml",
+      "class": "managed",
+      "marker": "hash"
+    }
+  ]
+}
