@@ -57,6 +57,21 @@ const FIELDS = ['source', 'target', 'class', 'marker']
 const BACKSLASH = String.fromCharCode(92)
 
 /**
+ * Rewrites a filesystem path to POSIX separators.
+ *
+ * Applied where paths derived from the filesystem enter the module, never to paths a
+ * human wrote into the catalog: there, a backslash is an authoring mistake and is
+ * rejected rather than repaired, because silently accepting `.github\x.yml` hides that
+ * somebody typed a Windows path and may have meant a different file.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function toPosix(value) {
+  return value.split(BACKSLASH).join('/')
+}
+
+/**
  * @param {string} message
  * @returns {never}
  */
@@ -121,11 +136,20 @@ export function parseCatalog(doc) {
     if (typeof marker !== 'string' || !MARKER_TYPES.some((m) => m === marker)) {
       invalid(`seeds[${index}].marker must be one of: ${MARKER_TYPES.join(' | ')}`)
     }
+    // The marker follows from the class, in both directions.
+    //
     // A managed file is replaced without being asked, so it has to say so in its own
-    // content. Only formats that cannot carry a comment are excused, and those cannot
-    // be managed.
+    // content — that is the only place a human looking at the diff will find out why.
+    //
+    // A seed-once file is never touched again, so a marker on it would be a claim the
+    // engine cannot keep: it carries a version that stops being true the moment the
+    // package moves on, and it would invite marker-aware code paths for files no code
+    // path will ever revisit.
     if (seedClass === 'managed' && marker === 'none') {
       invalid(`seeds[${index}] is managed and must declare a marker type`)
+    }
+    if (seedClass === 'seed-once' && marker !== 'none') {
+      invalid(`seeds[${index}] is seed-once and must declare marker "none", not "${marker}"`)
     }
 
     entries.push({
@@ -179,7 +203,11 @@ export function loadCatalog(seedsDir = SEEDS_DIR) {
   const templatesDir = path.join(seedsDir, TEMPLATES_DIRNAME)
   let files
   try {
-    files = listFiles(templatesDir)
+    // Normalised again rather than trusted. listFiles already returns POSIX paths, but
+    // these are about to be compared against catalog keys that end up in a committed
+    // manifest: if that ever changed, the mismatch would surface as a bogus "no catalog
+    // entry" on Windows only, and the invariant is cheaper to enforce than to debug.
+    files = listFiles(templatesDir).map(toPosix)
   } catch {
     throw new Error(`seed templates directory not found at ${templatesDir}`)
   }

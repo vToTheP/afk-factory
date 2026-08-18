@@ -63,8 +63,7 @@ test('parseCatalog rejects an unknown marker type', () => {
 
 test('a managed seed must carry a marker', () => {
   // A managed file is overwritten on update, so a human finding it in a diff needs the
-  // file itself to say where it came from. seed-once files may legitimately have none:
-  // JSON cannot carry a comment at all.
+  // file itself to say where it came from.
   assert.throws(
     () => parseCatalog(catalog(entry({ class: 'managed', marker: 'none' }))),
     /managed/,
@@ -72,6 +71,23 @@ test('a managed seed must carry a marker', () => {
   assert.equal(
     parseCatalog(catalog(entry({ class: 'managed', marker: 'hash' })))[0]?.marker,
     'hash',
+  )
+})
+
+test('a seed-once seed must not carry a marker', () => {
+  // The engine never touches the file again, so a marker on it would state a version
+  // that stops being true at the next release and can never be corrected. Forbidding it
+  // here keeps marker-aware code from being written for files nothing revisits.
+  for (const marker of ['hash', 'html']) {
+    assert.throws(
+      () => parseCatalog(catalog(entry({ class: 'seed-once', marker }))),
+      /seed-once/,
+      `accepted marker ${marker}`,
+    )
+  }
+  assert.equal(
+    parseCatalog(catalog(entry({ class: 'seed-once', marker: 'none' })))[0]?.marker,
+    'none',
   )
 })
 
@@ -160,6 +176,16 @@ test('the packaged catalog is valid and ships both ownership classes', () => {
   const classes = new Set(entries.map((e) => e.class))
   for (const seedClass of SEED_CLASSES) assert.ok(classes.has(seedClass), `no ${seedClass} seed`)
   assert.ok(entries.every((e) => MARKER_TYPES.includes(e.marker)))
+})
+
+test('every path loadCatalog returns is POSIX, whatever the host separator', () => {
+  // The post-condition the manifest depends on. These strings become keys in a file
+  // that is committed and read on every machine in a team: one backslash and a Windows
+  // checkout reports drift on a file nobody touched.
+  for (const entry of loadCatalog()) {
+    assert.ok(!entry.target.includes(BACKSLASH), `backslash in target ${entry.target}`)
+    assert.ok(!entry.source.includes(BACKSLASH), `backslash in source ${entry.source}`)
+  }
 })
 
 test('the packaged catalog seeds the config file and a workflow shell', () => {

@@ -1,10 +1,13 @@
 name: afk-factory run
 
-# Manual trigger only, deliberately: no schedule until the engine does real work. A
-# nightly job that fails in a repository somebody has just set up teaches them to ignore
-# the notification, and the signal never comes back.
+# No schedule, deliberately: a nightly job that fails in a repository somebody has just
+# set up teaches them to ignore the notification, and the signal never comes back.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - {{afk:defaultBranch}}
+  pull_request:
 
 jobs:
   run:
