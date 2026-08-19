@@ -19,8 +19,23 @@ import { fileURLToPath } from 'node:url'
 /** Absolute path to the installed package root. */
 export const PKG_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
+/**
+ * Locates the seeds directory of a package root.
+ *
+ * Exists so that the layout is written down once. A caller that needs to plan against a
+ * package root other than the installed one — every test that builds a fixture package —
+ * would otherwise repeat the directory name, and the copies would keep working right up
+ * until the layout changed.
+ *
+ * @param {string} root Package root.
+ * @returns {string} Absolute path to that package's seeds directory.
+ */
+export function seedsDirFor(root) {
+  return path.join(root, 'seeds')
+}
+
 /** Absolute path to the shipped seed templates. */
-export const SEEDS_DIR = path.join(PKG_ROOT, 'seeds')
+export const SEEDS_DIR = seedsDirFor(PKG_ROOT)
 
 /**
  * Reads the version of the installed package.
