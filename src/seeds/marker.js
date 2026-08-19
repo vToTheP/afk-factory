@@ -38,6 +38,22 @@ const MARKER_LINE = new RegExp(`^[ \\t]*(?:#|<!--)[ \\t]*${MARKER_TAG}:.*(?:\\r?
 const CR = String.fromCharCode(13)
 
 /**
+ * Matches the first line ending in a piece of content.
+ */
+const FIRST_LINE_ENDING = /\r?\n/
+
+/**
+ * The line ending a piece of content already uses, LF if it uses none.
+ *
+ * @param {string} content
+ * @returns {string}
+ */
+function lineEndingOf(content) {
+  const match = content.match(FIRST_LINE_ENDING)
+  return match === null ? '\n' : match[0]
+}
+
+/**
  * Rewrites CRLF line endings to LF.
  *
  * @param {string} content
@@ -82,6 +98,13 @@ export function stripMarker(content) {
  * Replacing rather than prepending keeps the operation idempotent: `init` writes a file
  * and `update` rewrites it, and a marker per release would otherwise accumulate.
  *
+ * The marker is terminated with the line ending the content already uses. Prepending a
+ * line with a hardcoded LF to a CRLF file produces mixed endings, which Git warns about
+ * and an editor silently normalises on the next save — and that save then reads as drift
+ * in a file its author never meant to change. The ending is taken from the content with
+ * the old marker already removed, so a file stamped by a version that got this wrong is
+ * repaired the next time it is written rather than kept mixed.
+ *
  * @param {MarkerType} type Comment syntax to use.
  * @param {string} content Content to stamp, with or without an existing marker.
  * @param {string} sha The digest to record, already prefixed.
@@ -90,7 +113,8 @@ export function stripMarker(content) {
 export function applyMarker(type, content, sha) {
   const line = markerLine(type, sha)
   if (line === null) return content
-  return `${line}\n${stripMarker(content)}`
+  const body = stripMarker(content)
+  return `${line}${lineEndingOf(body)}${body}`
 }
 
 /**

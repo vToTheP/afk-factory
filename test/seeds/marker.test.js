@@ -68,6 +68,26 @@ test('applyMarker replaces an existing marker rather than stacking one on top', 
   assert.equal(twice.split(MARKER_TAG).length - 1, 1)
 })
 
+test('applyMarker matches the line ending of the content it stamps', () => {
+  // A hardcoded LF would leave a CRLF file with exactly one LF line ending. Mixed
+  // endings make Git warn and make an editor normalise the whole file on the next save
+  // — and that save then reads as drift in a file nobody meant to touch.
+  const out = applyMarker('hash', `name: x${CRLF}jobs: {}${CRLF}`, 'sha256:abc')
+  assert.equal(out.split(CRLF)[0], `# ${MARKER_TAG}: sha256:abc`)
+  assert.equal(out.split('\n').length, out.split(CRLF).length)
+})
+
+test('applyMarker keeps CRLF when it replaces a marker it wrote before', () => {
+  const once = applyMarker('hash', `name: x${CRLF}`, 'sha256:one')
+  const twice = applyMarker('hash', once, 'sha256:two')
+  assert.equal(twice, applyMarker('hash', `name: x${CRLF}`, 'sha256:two'))
+  assert.equal(twice.split('\n').length, twice.split(CRLF).length)
+})
+
+test('applyMarker uses LF for content that has no line ending of its own', () => {
+  assert.equal(applyMarker('hash', 'name: x', 'sha256:abc'), `# ${MARKER_TAG}: sha256:abc\nname: x`)
+})
+
 test('stripMarker returns content without a marker unchanged', () => {
   // Reached on every file a user wrote by hand and on every JSON seed, so this is the
   // common path, not the edge case.
