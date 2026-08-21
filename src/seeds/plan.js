@@ -34,7 +34,7 @@ import path from 'node:path'
 import { PKG_ROOT, seedsDirFor } from '../pkg.js'
 import { TEMPLATES_DIRNAME, loadCatalog } from './catalog.js'
 import { applyMarker, contentSha } from './marker.js'
-import { render } from './render.js'
+import { placeholders, render } from './render.js'
 
 /** @typedef {import('./catalog.js').SeedClass} SeedClass */
 
@@ -47,6 +47,43 @@ import { render } from './render.js'
  * @property {string} rendered Exact content to write, marker included.
  * @property {string} sha Digest of the rendered content, recorded in the manifest.
  */
+
+/**
+ * Reads one template.
+ *
+ * @param {string} pkgRoot
+ * @param {string} source Template path, relative to the templates directory.
+ * @returns {string}
+ */
+function readTemplate(pkgRoot, source) {
+  return readFileSync(path.join(seedsDirFor(pkgRoot), TEMPLATES_DIRNAME, source), 'utf8')
+}
+
+/**
+ * Lists every value the packaged seeds need, across all of them.
+ *
+ * Exists so a caller can find out what is missing before it starts writing, and report
+ * all of it at once. One missing key per failed run is a conversation rather than an
+ * error message, and every run that gets part of the way leaves a project half seeded.
+ *
+ * It is also the question the interactive setup has to answer — these keys are exactly
+ * what it will ask about — which is why it is derived from the templates rather than
+ * written down a second time.
+ *
+ * @param {object} [options]
+ * @param {string} [options.pkgRoot] Package root to read seeds from.
+ * @returns {string[]} Keys, deduplicated, in catalog order.
+ */
+export function requiredValues({ pkgRoot = PKG_ROOT } = {}) {
+  /** @type {string[]} */
+  const keys = []
+  for (const entry of loadCatalog(seedsDirFor(pkgRoot))) {
+    for (const key of placeholders(readTemplate(pkgRoot, entry.source))) {
+      if (!keys.includes(key)) keys.push(key)
+    }
+  }
+  return keys
+}
 
 /**
  * Plans every seed this package ships.
@@ -71,12 +108,8 @@ import { render } from './render.js'
  *   supplied.
  */
 export function buildSeedPlan({ config, pkgRoot = PKG_ROOT }) {
-  const seedsDir = seedsDirFor(pkgRoot)
-  const templatesDir = path.join(seedsDir, TEMPLATES_DIRNAME)
-
-  return loadCatalog(seedsDir).map((entry) => {
-    const template = readFileSync(path.join(templatesDir, entry.source), 'utf8')
-    const content = render(template, config)
+  return loadCatalog(seedsDirFor(pkgRoot)).map((entry) => {
+    const content = render(readTemplate(pkgRoot, entry.source), config)
     const sha = contentSha(content)
     return {
       target: entry.target,
