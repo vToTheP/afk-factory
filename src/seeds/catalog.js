@@ -80,27 +80,41 @@ function invalid(message) {
 }
 
 /**
- * Rejects anything that is not a plain, normalised, project-relative path.
+ * Says what is wrong with a project-relative path, or `null` if nothing is.
  *
- * Targets are joined onto the root of somebody else's repository and then written to, so
- * a path that escapes it does not fail — it quietly writes outside the project. Sources
- * and targets are also used as map keys in the manifest, which is committed: a backslash
- * would give a Windows machine different keys than a Linux one for the same file.
+ * Targets are joined onto the root of somebody else's repository and then written to,
+ * so a path that escapes it does not fail — it quietly writes outside the project. These
+ * paths are also used as keys in the manifest, which is committed: a backslash would
+ * give a Windows machine different keys than a Linux one for the same file.
  *
+ * Shared with the manifest, whose keys are these same target paths read back from a file
+ * a human may have hand-merged. It returns the reason rather than a boolean so both
+ * callers can name the field that is wrong without the rule existing twice.
+ *
+ * @param {unknown} value
+ * @returns {string | null} The problem, phrased to follow the name of the field.
+ */
+export function projectPathProblem(value) {
+  if (typeof value !== 'string' || value === '') return 'must be a non-empty string'
+  if (value.includes(BACKSLASH)) return `must use "/" as the separator: ${value}`
+  if (value.startsWith('/') || /^[a-zA-Z]:/.test(value)) return `must be relative: ${value}`
+  const segments = value.split('/')
+  if (segments.includes('.') || segments.includes('..') || segments.includes('')) {
+    return `must be a normalised path: ${value}`
+  }
+  return null
+}
+
+/**
  * @param {unknown} value
  * @param {string} field
  * @param {number} index
  * @returns {string}
  */
 function relativePath(value, field, index) {
-  if (typeof value !== 'string' || value === '') invalid(`seeds[${index}].${field} must be a non-empty string`)
-  if (value.includes(BACKSLASH)) invalid(`seeds[${index}].${field} must use "/" as the separator: ${value}`)
-  if (value.startsWith('/') || /^[a-zA-Z]:/.test(value)) invalid(`seeds[${index}].${field} must be relative: ${value}`)
-  const segments = value.split('/')
-  if (segments.includes('.') || segments.includes('..') || segments.includes('')) {
-    invalid(`seeds[${index}].${field} must be a normalised path: ${value}`)
-  }
-  return value
+  const problem = projectPathProblem(value)
+  if (problem !== null) invalid(`seeds[${index}].${field} ${problem}`)
+  return /** @type {string} */ (value)
 }
 
 /**
