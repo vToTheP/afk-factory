@@ -1,0 +1,17 @@
+{
+  "_warning": "This file is machine-generated. Do not edit.",
+  "engineVersion": "0.0.0",
+  "configVersion": 1,
+  "seeds": {
+    ".afk-factory.json": {
+      "class": "seed-once",
+      "sha": "sha256:dfc8589966225b19cb38d2ea6fbb1795621b069968663ec9a6856e10a88e63a7",
+      "seededBy": "0.0.0"
+    },
+    ".github/workflows/afk-run.yml": {
+      "class": "managed",
+      "sha": "sha256:610c2d7ca206675d60ce20dc819b741803f35a0e91b2f1fb31f6203e752f4b98",
+      "seededBy": "0.0.0"
+    }
+  }
+}

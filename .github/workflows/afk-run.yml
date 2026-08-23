@@ -1,0 +1,37 @@
+# afk-factory-state: sha256:610c2d7ca206675d60ce20dc819b741803f35a0e91b2f1fb31f6203e752f4b98
+name: afk-factory run
+
+# No schedule, deliberately: a nightly job that fails in a repository somebody has just
+# set up teaches them to ignore the notification, and the signal never comes back.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+  pull_request:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    # Scoped to the job rather than the workflow, so a step added later starts from the
+    # default read-only token instead of inheriting write access it was never meant to
+    # have. Without these two the run reaches the push and fails with a 403.
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      # Invoked bare on purpose: no `|| true`, no `continue-on-error`, no pipe that
+      # replaces the exit status with the one of the last command in the chain. This
+      # workflow is the thing that reports whether the factory worked.
+      - name: Work one issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: "npx --yes afk-factory@0.0.0 run"

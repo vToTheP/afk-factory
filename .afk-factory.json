@@ -1,0 +1,9 @@
+{
+  "configVersion": 1,
+  "defaultBranch": "main",
+  "gates": {
+    "lint": "npm run typecheck",
+    "test": "npm test",
+    "build": ""
+  }
+}
