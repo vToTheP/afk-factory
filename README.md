@@ -3,9 +3,9 @@
 A stack-agnostic CLI that runs an **issue-driven, agent-based development loop** on GitHub
 Issues: pick an issue, implement one slice, run the project's gates, open a pull request.
 
-> **Status: early development.** Nothing is published to npm yet and every command is a stub.
-> The commands below describe the intended interface, not something you can run today.
-> Progress lives in the [issues](https://github.com/vToTheP/afk-factory/issues).
+> **Status: early development.** Nothing is published to npm yet. `init` works; `run`,
+> `doctor` and `update` are still stubs that exit non-zero. Progress lives in the
+> [issues](https://github.com/vToTheP/afk-factory/issues).
 
 ## How much autonomy
 
@@ -33,14 +33,27 @@ npx afk-factory init
 
 ## Getting started
 
-`init` asks about your project, writes a configuration file and unpacks the files the
-factory needs into your repository. `doctor` then verifies the result:
+`init` reads what it can from your repository, writes a configuration file and unpacks the
+files the factory needs. `doctor` then verifies the result:
 
 ```bash
 npx afk-factory init     # set up this repository
 npx afk-factory doctor   # check the setup
 npx afk-factory run      # work one issue and open a pull request
 ```
+
+`init` is additive: it never overwrites a file that is already there, whatever that file
+is. Anything it finds in place is reported as skipped and left alone, and bringing an
+existing file up to a newer version is `update`'s job, where you get a plan to read first.
+
+It also writes `.afk-manifest.json`, which records what was delivered and with which
+version. **Commit it.** On a fresh clone or in CI it is the only record of what the files
+looked like when they were written, and without it `update` cannot tell a change you made
+from a change we shipped. The file is machine-generated; edit the configuration instead.
+
+Values `init` cannot work out for itself are supplied with `--set key=value`, and it names
+the ones it is missing rather than inventing them. That flag is scaffolding for the
+interactive setup that will replace it, so do not build anything on it.
 
 Your project declares its own gates — whatever `lint`, `test` or `build` mean in your
 stack — in `.afk-factory.json`. The factory runs them and does not need to know anything
