@@ -59,6 +59,10 @@ Your project declares its own gates — whatever `lint`, `test` or `build` mean 
 stack — in `.afk-factory.json`. The factory runs them and does not need to know anything
 about the stack itself.
 
+A gate you do not have is left as an empty string, which means *skip*: the factory does
+not run it and does not count it against you. That is a normal configuration, not an
+unfinished one — a project without a build step says so by leaving `build` empty.
+
 ## Commands
 
 | Command | Purpose |

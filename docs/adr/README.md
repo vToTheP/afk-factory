@@ -9,3 +9,4 @@ old record stays and is marked superseded; the history is the point.
 
 - [0001 — File ownership and the update contract](0001-file-ownership-and-the-update-contract.md)
 - [0002 — Orchestration fails loudly, notification fails quietly](0002-orchestration-fails-loudly-notification-fails-quietly.md)
+- [0003 — Empty gate commands mean skip](0003-empty-gate-commands-mean-skip.md)
